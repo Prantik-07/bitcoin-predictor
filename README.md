@@ -50,7 +50,7 @@ While other submissions may show high coverage (e.g., 0.98), they often achieve 
 
 - **Live Dashboard:** Built with Streamlit, fetching real-time data from Binance's public API.
 - **Visualization:** Uses Plotly to show a shaded 95% confidence ribbon for the predicted next hour.
-- **Persistence:** Uses a Supabase (PostgreSQL) database to log every prediction made by the dashboard. This ensures history is preserved even on Streamlit Cloud's ephemeral filesystem. As time passes, the dashboard automatically updates past predictions with actual closing prices and calculates "Live Coverage".
+- **Persistence:** Uses Supabase (PostgreSQL) via direct REST API to log every prediction. This ensures history is preserved even on Streamlit Cloud's ephemeral filesystem and bypasses common IPv6 connection issues.
 
 ## How to Run
 
@@ -68,7 +68,7 @@ While other submissions may show high coverage (e.g., 0.98), they often achieve 
           low REAL,
           high REAL,
           actual REAL,
-          hit INTEGER
+          hit TEXT
       );
       ```
 3.  **Configure Secrets:**
@@ -83,7 +83,6 @@ While other submissions may show high coverage (e.g., 0.98), they often achieve 
     ```bash
     python backtest.py
     ```
-    This will generate `backtest_results.jsonl` and `backtest_metrics.json`.
 5.  **Launch Dashboard (Part B & C):**
     ```bash
     streamlit run app.py
@@ -92,7 +91,7 @@ While other submissions may show high coverage (e.g., 0.98), they often achieve 
 ## Files
 - `utils.py`: Core logic for data fetching, Student-t fitting, and metrics.
 - `backtest.py`: Walk-forward validation and parameter optimization.
-- `app.py`: Streamlit dashboard with Supabase persistence.
+- `app.py`: Streamlit dashboard with Supabase (PostgreSQL) REST persistence.
 - `backtest_results.jsonl`: Required output for Part A.
 - `backtest_metrics.json`: Coverage, avg width, Winkler score.
 - `requirements.txt`: Python dependencies.
