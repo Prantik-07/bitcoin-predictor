@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from utils import fetch_binance_data, calculate_log_returns, simulate_gbm_student_t
-import sqlite3
+from supabase import create_client
 import json
 import os
 from datetime import datetime
@@ -14,55 +14,45 @@ VOLATILITY_WINDOW = 30 # Chosen from window optimization experiment - see README
 # Page config
 st.set_page_config(page_title="Bitcoin Next Hour Predictor | AlphaI × Polaris", layout="wide")
 
-# Database setup
-DB_FILE = "predictions.db"
-
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS predictions
-                 (timestamp TEXT, low REAL, high REAL, actual REAL, hit INTEGER)''')
-    conn.commit()
-    conn.close()
+@st.cache_resource
+def get_db():
+    url = st.secrets["supabase"]["url"]
+    key = st.secrets["supabase"]["key"]
+    return create_client(url, key)
 
 def save_prediction(timestamp, low, high, actual=None):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    db = get_db()
     # Check if prediction for this timestamp already exists
-    c.execute("SELECT * FROM predictions WHERE timestamp=?", (str(timestamp),))
-    if c.fetchone() is None:
-        c.execute("INSERT INTO predictions (timestamp, low, high, actual, hit) VALUES (?, ?, ?, ?, ?)",
-                  (str(timestamp), low, high, actual, None))
-    conn.commit()
-    conn.close()
+    res = db.table("predictions").select("*").eq("timestamp", str(timestamp)).execute()
+    if len(res.data) == 0:
+        db.table("predictions").insert({
+            "timestamp": str(timestamp),
+            "low": low,
+            "high": high,
+            "actual": actual,
+            "hit": None
+        }).execute()
 
 def update_actuals(df):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    db = get_db()
     # Find predictions without actuals
-    c.execute("SELECT timestamp FROM predictions WHERE actual IS NULL")
-    rows = c.fetchall()
+    res = db.table("predictions").select("*").is_("actual", "null").execute()
+    rows = res.data
     for row in rows:
-        ts = row[0]
+        ts = row["timestamp"]
         # Match with df
         match = df[df['timestamp'].astype(str) == ts]
         if not match.empty:
             actual = float(match.iloc[0]['close'])
-            low = c.execute("SELECT low FROM predictions WHERE timestamp=?", (ts,)).fetchone()[0]
-            high = c.execute("SELECT high FROM predictions WHERE timestamp=?", (ts,)).fetchone()[0]
+            low = row["low"]
+            high = row["high"]
             hit = 1 if low <= actual <= high else 0
-            c.execute("UPDATE predictions SET actual=?, hit=? WHERE timestamp=?", (actual, hit, ts))
-    conn.commit()
-    conn.close()
+            db.table("predictions").update({"actual": actual, "hit": hit}).eq("timestamp", ts).execute()
 
 def get_predictions_history():
-    conn = sqlite3.connect(DB_FILE)
-    df_hist = pd.read_sql_query("SELECT * FROM predictions ORDER BY timestamp DESC", conn)
-    conn.close()
-    return df_hist
-
-# Initialize
-init_db()
+    db = get_db()
+    res = db.table("predictions").select("*").order("timestamp", desc=True).execute()
+    return pd.DataFrame(res.data)
 
 st.title("BTCUSDT Next Hour Price Predictor")
 st.write("AlphaI × Polaris Challenge Submission")

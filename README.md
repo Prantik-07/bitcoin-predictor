@@ -49,34 +49,50 @@ While other submissions may show high coverage (e.g., 0.98), they often achieve 
 ### Part B & C: Dashboard and Persistence
 
 - **Live Dashboard:** Built with Streamlit, fetching real-time data from Binance's public API.
-- **Visualization:** Uses Plotly to show a shaded 95% confidence ribbon extending one bar into the future.
-- **Persistence:** Uses an SQLite database to log every prediction. As each hour closes, the dashboard automatically fills in the actual price and computes live hit/miss, building a real track record over time.
+- **Visualization:** Uses Plotly to show a shaded 95% confidence ribbon for the predicted next hour.
+- **Persistence:** Uses a Supabase (PostgreSQL) database to log every prediction made by the dashboard. This ensures history is preserved even on Streamlit Cloud's ephemeral filesystem. As time passes, the dashboard automatically updates past predictions with actual closing prices and calculates "Live Coverage".
 
 ## How to Run
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Run backtest (Part A):**
-   ```bash
-   python backtest.py
-   ```
-   Generates `backtest_results.jsonl` and `backtest_metrics.json`.
-
-3. **Launch dashboard (Part B & C):**
-   ```bash
-   streamlit run app.py
-   ```
+1.  **Install Dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+2.  **Supabase Setup:**
+    - Create a free project at [supabase.com](https://supabase.com).
+    - In the SQL Editor, run:
+      ```sql
+      CREATE TABLE predictions (
+          id SERIAL PRIMARY KEY,
+          timestamp TEXT,
+          low REAL,
+          high REAL,
+          actual REAL,
+          hit INTEGER
+      );
+      ```
+3.  **Configure Secrets:**
+    - **Locally:** Create a `.streamlit/secrets.toml` file:
+      ```toml
+      [supabase]
+      url = "your_supabase_project_url"
+      key = "your_supabase_anon_key"
+      ```
+    - **Streamlit Cloud:** Add the same toml to the app's "Secrets" in the dashboard.
+4.  **Run Backtest (Part A):**
+    ```bash
+    python backtest.py
+    ```
+    This will generate `backtest_results.jsonl` and `backtest_metrics.json`.
+5.  **Launch Dashboard (Part B & C):**
+    ```bash
+    streamlit run app.py
+    ```
 
 ## Files
-
-| File | Purpose |
-|------|---------|
-| `utils.py` | Data fetching, Student-t GBM simulation, metrics |
-| `backtest.py` | Walk-forward validation and window optimization |
-| `app.py` | Streamlit dashboard with SQLite persistence |
-| `backtest_results.jsonl` | Required Part A output — 720 predictions |
-| `backtest_metrics.json` | Coverage, avg width, Winkler score |
-| `requirements.txt` | Python dependencies |
+- `utils.py`: Core logic for data fetching, Student-t fitting, and metrics.
+- `backtest.py`: Walk-forward validation and parameter optimization.
+- `app.py`: Streamlit dashboard with Supabase persistence.
+- `backtest_results.jsonl`: Required output for Part A.
+- `backtest_metrics.json`: Coverage, avg width, Winkler score.
+- `requirements.txt`: Python dependencies.
