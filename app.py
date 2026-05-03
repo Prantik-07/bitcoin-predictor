@@ -33,20 +33,27 @@ def save_prediction(timestamp: str, low: float, high: float):
     try:
         url = get_sb_url()
         headers = get_sb_headers()
+        # Check if already exists
         check = req.get(
             url,
             headers={**headers, "Prefer": ""},
-            params={"timestamp": f"eq.{timestamp}", "select": "id"},
-            timeout=5
+            params={"select": "id", "timestamp": f"eq.{timestamp}"},
+            timeout=10
         )
-        if check.ok and len(check.json()) == 0:
-            req.post(url, headers=headers, json={
-                "timestamp": timestamp,
-                "low": low,
-                "high": high,
-                "actual": None,
-                "hit": None
-            }, timeout=5)
+        if check.status_code == 200 and len(check.json()) > 0:
+            return  # Already saved
+        # Insert new prediction
+        payload = {
+            "timestamp": timestamp,
+            "low": float(low),
+            "high": float(high)
+        }
+        req.post(
+            url,
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
     except Exception:
         pass
 
