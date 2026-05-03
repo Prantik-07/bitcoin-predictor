@@ -182,29 +182,55 @@ if not history_df.empty:
         live_coverage = live_hits / len(resolved)
         st.metric("Live Coverage (resolved predictions)", f"{live_coverage:.2%}")
         fig_hist = go.Figure()
+
+        # Predicted range ribbon
+        for _, row in resolved.iterrows():
+            fig_hist.add_shape(
+                type="rect",
+                x0=row["timestamp"], x1=row["timestamp"],
+                y0=row["low"], y1=row["high"],
+                line=dict(color="rgba(0,200,100,0.8)", width=3),
+            )
+
         fig_hist.add_trace(go.Scatter(
-            x=resolved["timestamp"], y=resolved["actual"],
-            mode="markers", name="Actual Price",
-            marker=dict(color="white", size=6)
+            x=resolved["timestamp"],
+            y=resolved["actual"],
+            mode="markers+lines",
+            name="Actual Price",
+            marker=dict(color="white", size=8),
+            line=dict(color="white", width=1)
         ))
+
+        # Error bars to show range
         fig_hist.add_trace(go.Scatter(
-            x=resolved["timestamp"], y=resolved["high"],
-            mode="lines", line=dict(width=0), showlegend=False
-        ))
-        fig_hist.add_trace(go.Scatter(
-            x=resolved["timestamp"], y=resolved["low"],
-            mode="lines", line=dict(width=0),
-            fill="tonexty", fillcolor="rgba(0, 200, 100, 0.2)",
+            x=resolved["timestamp"],
+            y=(resolved["low"] + resolved["high"]) / 2,
+            error_y=dict(
+                type="data",
+                symmetric=False,
+                array=resolved["high"] - (resolved["low"] + resolved["high"]) / 2,
+                arrayminus=(resolved["low"] + resolved["high"]) / 2 - resolved["low"],
+                color="rgba(0,200,100,0.5)",
+                thickness=4,
+                width=6
+            ),
+            mode="markers",
+            marker=dict(color="rgba(0,200,100,0.8)", size=4),
             name="Predicted Range"
         ))
+
         fig_hist.update_layout(
             title="Live Prediction Performance",
-            xaxis_title="Time", yaxis_title="Price (USD)",
-            template="plotly_dark", height=400,
-            yaxis=dict(range=[
-                resolved["actual"].min() * 0.999,
-                resolved["actual"].max() * 1.001
-            ])
+            xaxis_title="Time",
+            yaxis_title="Price (USD)",
+            template="plotly_dark",
+            height=400,
+            yaxis=dict(
+                range=[
+                    resolved["low"].min() * 0.9995,
+                    resolved["high"].max() * 1.0005
+                ]
+            )
         )
         st.plotly_chart(fig_hist, use_container_width=True)
     else:
