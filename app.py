@@ -200,7 +200,11 @@ if not history_df.empty:
         fig_hist.update_layout(
             title="Live Prediction Performance",
             xaxis_title="Time", yaxis_title="Price (USD)",
-            template="plotly_dark", height=400
+            template="plotly_dark", height=400,
+            yaxis=dict(range=[
+                resolved["actual"].min() * 0.999,
+                resolved["actual"].max() * 1.001
+            ])
         )
         st.plotly_chart(fig_hist, use_container_width=True)
     else:
