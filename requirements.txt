@@ -4,4 +4,3 @@ requests
 scipy
 streamlit
 plotly
-supabase
