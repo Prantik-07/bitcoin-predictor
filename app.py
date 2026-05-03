@@ -124,14 +124,6 @@ else:
 st.title("BTCUSDT Next Hour Price Predictor")
 st.write("AlphaI × Polaris Challenge Submission")
 
-# DEBUG - remove after fixing
-try:
-    r = req.get(f"{st.secrets['supabase']['url']}/rest/v1/predictions?select=id&limit=1",
-                headers={"apikey": st.secrets["supabase"]["key"]}, timeout=10)
-    st.write(f"DB status: {r.status_code} | response: {r.text[:200]}")
-except Exception as e:
-    st.write(f"DB FAILED: {e}")
-
 with st.spinner("Fetching latest data from Binance..."):
     df = fetch_binance_data(limit=500)
     df = calculate_log_returns(df)
